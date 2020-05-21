@@ -21,7 +21,6 @@ from warmup_scheduler import GradualWarmupScheduler
 import sys
 sys.path.append("..")
 from utils.config import *
-from utils.tfr_scheduler import tfr_scheduler
 from utils.adamW import AdamW
 from validate_test import *
 from model_code.data_hotpotqa import *
