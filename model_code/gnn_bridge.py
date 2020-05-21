@@ -46,6 +46,7 @@ class GNN_Bridge(nn.Module):
             if 'posgat' in self.model:
                 self.gnn_layer.append(GNN_Pos_Att_Layer(d_input=d_in, d_model=d_out))
             if 'ggcn' in self.model:
+                print(d_in)
                 self.gnn_layer.append(GGNN(state_dim=d_in, annotation_dim=1, n_edge_types=1, n_steps=steps))
             d_in = d_out
             i += 1
