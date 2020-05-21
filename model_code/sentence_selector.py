@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from model_code.gnn import *
 from model_code.data_hotpotqa import *
-from experimental.supporting_sent import supporting_sent
+
 #Determines which sentences we want to sample for the decoder. Essentially performing an
 #extractive summary before performing an abstractive one
 class Sentence_Selector(nn.Module):
