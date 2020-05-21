@@ -168,10 +168,8 @@ def test_qa(dataset, run_model, model=None, pool=None, args=None, samples=None):
     else:
         num_batches = samples/dataset.args.batch
         args.cache=1
-    if args.cheat:
-        cur_cache = dataset.get_training_item(0, args.cache)
-    else:    
-        cur_cache = dataset.get_test_item(0, args.cache)
+
+    cur_cache = dataset.get_test_item(0, args.cache)
 
     #Changing default params for testing
     pred_ans = list()
@@ -260,10 +258,7 @@ def validate_qa(dataset, run_model, model=None, pool=None, args=None, samples = 
     args.cache = 10
 
     num_batches = samples * args.cache
-    if args.cheat:
-        cur_cache = dataset.get_training_item(0, args.cache)
-    else:    
-        cur_cache = dataset.get_eval_item(0, args.cache)
+    cur_cache = dataset.get_eval_item(0, args.cache)
 
     #Changing default params for testing
     pred_ans = list()
