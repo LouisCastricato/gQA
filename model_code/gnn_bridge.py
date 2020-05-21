@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 from model_code.sentence_selector import Sentence_Selector
-from model_code.data_opinosis import *
+from model_code.data_hotpotqa import *
 
 import sys
 sys.path.append("..")

@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from model_code.data_opinosis import *
 from model_code.data_hotpotqa import local_num2text as gqa_local_num2text
-from model_code.gSUM import gSUM
 from torch.optim import RMSprop
 import numpy as np
 import random
@@ -16,20 +14,8 @@ import os
 from tqdm.autonotebook import tqdm
 from multiprocessing.pool import ThreadPool
 from torch.nn.utils import clip_grad_norm_
-from pythonrouge.pythonrouge import Pythonrouge
-from utils.beam_decoder import *
 from utils.adamW import AdamW
 from collections import Counter
-
-def fetch_generated_summary(summary, oov, gqa=False):
-    eos = 0
-    try:
-        eos = summaries.index(EOS)
-    except:
-        eos = len(summary)
-    if gqa:
-        return gqa_local_num2text(summary[0:eos], None, oov, test=True)
-    return local_num2text(summary[0:eos], None, oov, test=True)
 
 
 #Start = [indx, value]
@@ -87,129 +73,11 @@ n_best = 128, mask=None):
     text_toks = data_word_ex[best.start[0]:best.end[0]+1]
     return gqa_local_num2text(text_toks, None, data_point.oov, test=True)
 
-def summary_map(summaries, batch, gqa=False):
-    return list(map(lambda i: " ".join(fetch_generated_summary(summaries[i], batch.oov[i], gqa)), range(len(summaries))))
-
 def gold_map(batch):
     return list(map(lambda gold: " ".join(gold), batch.gold))
 
 def gold_map_raw(strings):
     return list(map(lambda gold: " ".join(gold), strings))
-
-def validate(dataset, run_model, model=None, \
-    loss_function=None, pool=None, args=None, train_gqa=False):
-    model.eval()
-
-    #For when we run out of VRAM
-    batch_size_old = dataset.args.batch
-    dataset.args.batch = 5
-
-    num_batches = (args.file_limit * 0.05)/dataset.args.batch 
-    cur_cache = dataset.get_eval_item(0, args.cache, args.PG)
-    itt_loss = 0
-
-    for index in tqdm(range(1, int(num_batches), args.cache)):
-        #print(index)
-        async_result = pool.apply_async(dataset.get_eval_item, (index, args.cache, args.PG))
-        #print(cur_cache)
-        for batch in cur_cache:
-            #Some batches have low data quality
-            max_sample_size = int(max(batch.sent_sim.sum(dim=1)).item())
-            model.change_sample_size(max_sample_size)
-            loss, _, _ = run_model(model, batch, False, train_gqa)
-
-            #Accumulate loss
-            itt_loss += loss[0].data.sum()
-
-        #Try to fetch the next cache, if it fails we stored a backup
-        backup = cur_cache
-        try:
-            cur_cache = async_result.get()
-        except:
-            #If there was an issue with this batch, just load the next batch and continue
-            cur_cache = backup
-            continue
-
-    model.change_sample_size(args.sample_size)
-    dataset.args.batch = batch_size_old
-
-    return itt_loss
-
-def test_rouge(dataset, run_model, model=None, 
-loss_function=None, pool=None, args=None, distributed = False):
-    model.eval()
-
-    #For when we run out of VRAM
-    batch_size_old = dataset.args.batch
-    dataset.args.batch = 1 
-    is_coverage = (args.lambda_coeff > 0)
-
-    num_batches = (args.file_limit * 0.05)/dataset.args.batch
-    cur_cache = dataset.get_test_item(0, args.cache, args.PG)
-
-    summary_text = []
-    golden_text = []
-    b = BeamSearch()
-    if not distributed:
-        for index in tqdm(range(1, int(num_batches), args.cache)):
-            #print(index)
-            async_result = pool.apply_async(dataset.get_test_item, (index, args.cache, args.PG))
-            #print(cur_cache)
-            for batch in cur_cache:
-                #Some batches have low data quality
-                returned_beam = b.beam_search([batch], model, args, is_coverage, run_model, False, beam_size=4)
-
-                summary_text.append(summary_map([returned_beam.tokens[1:len(returned_beam.tokens)]], batch))
-                golden_text.append(gold_map(batch))
-
-            #Try to fetch the next cache, if it fails we stored a backup
-            backup = cur_cache
-            try:
-                cur_cache = async_result.get()
-            except:
-                #If there was an issue with this batch, just load the next batch and continue
-                cur_cache = backup
-                continue
-    else:
-        for index in range(1, int(num_batches), args.cache):
-            #print(index)
-            async_result = pool.apply_async(dataset.get_test_item, (index, cpu_embedding, args.cache, args.PG))
-            #print(cur_cache)
-            for batch in cur_cache:
-                #Some batches have low data quality
-                returned_beam = b.beam_search([batch], model, args, False, run_model, False, beam_size=4)
-
-                summary_text.append(summary_map([returned_beam.tokens[1:len(returned_beam.tokens)]], batch))
-                golden_text.append(gold_map(batch))
-
-            #Try to fetch the next cache, if it fails we stored a backup
-            backup = cur_cache
-            try:
-                cur_cache = async_result.get()
-            except:
-                #If there was an issue with this batch, just load the next batch and continue
-                cur_cache = backup
-                continue        
-
-    model.change_sample_size(args.sample_size)
-    #print(golden_text)
-
-    rouge = Pythonrouge(summary_file_exist=False,
-                        summary=summary_text, reference=golden_text,
-                        n_gram=2, ROUGE_SU4=True, ROUGE_L=True,
-                        recall_only=True, stemming=True, stopwords=True,
-                        word_level=True, length_limit=False, length=args.gold_len,
-                        use_cf=False, cf=95, scoring_formula='average',
-                        resampling=True, samples=1000, favor=True, p=0.5)
-
-    score = rouge.calc_score()
-    if not distributed:
-        print(score)
-
-    model.change_sample_size(args.sample_size)
-    dataset.args.batch = batch_size_old
-
-    return score
 
 def normalize_answer(s):
 

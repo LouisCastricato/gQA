@@ -1,7 +1,6 @@
 from utils.exec_util import *
 from utils.config import *
 from model_code.data_hotpotqa import *
-from model_code.data_squad import *
 import signal
 import time
 import gc
@@ -263,10 +262,8 @@ if __name__ == '__main__':
     else:
         txt_file = "hotpotqa_data/preprocessed_vn/hotpotqa_vocab.txt"
         json_file = args.data_path + "preprocessed_vn/train_text/"
-    if not args.data_path == "squad_data/":
-        dataset = read_hotpotqa_data(txt_file, json_file, args)
-    else:
-        dataset = read_squad_data(txt_file, json_file, args)
+    dataset = read_hotpotqa_data(txt_file, json_file, args)
+
     print('Data loaded.')
 
     if args.split:

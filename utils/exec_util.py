@@ -24,9 +24,7 @@ from utils.config import *
 from utils.tfr_scheduler import tfr_scheduler
 from utils.adamW import AdamW
 from validate_test import *
-from model_code.data_opinosis import *
-from model_code.gSUM import gSUM
-from model_code.gQA import gQA
+from model_code.data_hotpotqa import *
 from model_code.gQA_Span import gQA_Span
 
 def to_var(tensors, cuda=True):
