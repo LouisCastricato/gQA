@@ -32,7 +32,6 @@ parser.add_argument('--data_path', type=str, default='sum_data/', help='data pat
 parser.add_argument('--task', type=str, default='opinosis', choices=['opinosis','hotpotqa','squad'])
 parser.add_argument('--test', action='store_true', default=False, help='test mode')
 parser.add_argument('--validate', action='store_true', default=False, help='validate mode')
-parser.add_argument('--cheat', action='store_true', default=False, help='Cheat in testing mode')
 parser.add_argument('--load', action='store_true', default=False, help='Load prior model')
 parser.add_argument('--save', action='store_true', default=False, help='Save model')
 parser.add_argument('--split', action='store_true', default=False, help = 'Regenerate the train/val/test split')

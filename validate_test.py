@@ -178,54 +178,31 @@ def test_qa(dataset, run_model, model=None, pool=None, args=None, samples=None):
     pred_top_k = list()
     gold_ans = list()
     gold_top_k = list()
-    b = BeamSearch()
+
     for index in tqdm(range(1, int(num_batches), args.cache)):
-        if args.cheat:
-            async_result = pool.apply_async(dataset.get_training_item, (index, args.cache))
-        else:
-            async_result = pool.apply_async(dataset.get_test_item, (index, args.cache))
+        async_result = pool.apply_async(dataset.get_test_item, (index, args.cache))
         for batch in cur_cache:
+            output = run_model(model, batch, False, args.train_qa, True, args.span)
 
+            for i in range(dataset.args.batch):
+                n_support = batch.hpqa_batch[i].ss_count
+                ss = output[1][i]
+                pred_ss = ((ss > 0.3).nonzero().cpu().detach().numpy()).flatten()
 
-            if args.span:
-                output = run_model(model, batch, False, 
-                args.PG, args.train_qa, tfr_override=0.0, span=args.span)
+                #pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
+                gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
 
+                text = find_span(batch.data_word_ex[i], 
+                output[2][i], output[3][i], output[4][i], 
+                batch.hpqa_batch[i].sent_count_no_q * batch.max_sent_len,
+                batch.hpqa_batch[i], dataset.args, mask=batch.data_mask_no_q[i])
 
-                for i in range(dataset.args.batch):
-                    n_support = batch.hpqa_batch[i].ss_count
-                    ss = output[1][i]
-                    pred_ss = ((ss > 0.3).nonzero().cpu().detach().numpy()).flatten()
-                    '''
-                    print(pred_ss)
-                    print(n_support)
-                    print(torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy())
-                    print(torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy())
-                    '''
-                    #pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
-                    gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
+                pred_ans.append(text)
+                pred_top_k.append(pred_ss)
 
-                    text = find_span(batch.data_word_ex[i], 
-                    output[2][i], output[3][i], output[4][i], 
-                    batch.hpqa_batch[i].sent_count_no_q * batch.max_sent_len,
-                    batch.hpqa_batch[i], dataset.args, mask=batch.data_mask_no_q[i])
+                gold_ans.append(batch.gold[i])
+                gold_top_k.append(gold_ss)
 
-                    pred_ans.append(text)
-                    pred_top_k.append(pred_ss)
-
-                    gold_ans.append(batch.gold[i])
-                    gold_top_k.append(gold_ss)
-                #sys.exit()
-                continue
-            num_supporting_sents = int(batch.sent_sim.sum(1).item())
-            if args.hard_ss:
-                num_supporting_sents = args.sample_size
-
-            model.change_sample_size(num_supporting_sents)
-            returned_beam = b.beam_search([batch], model, args, False, run_model, False, beam_size=8)
-            pred_ans.append(summary_map([returned_beam.tokens[1:len(returned_beam.tokens)]], batch, True))
-            gold_ans.append(gold_map(batch))
-            batch.sent_sim[0].sum()
         backup = cur_cache
         try:
             cur_cache = async_result.get()
@@ -293,50 +270,36 @@ def validate_qa(dataset, run_model, model=None, pool=None, args=None, samples = 
     pred_top_k = list()
     gold_ans = list()
     gold_top_k = list()
-    
-    b = BeamSearch()
+
     loss_total = 0
 
     for index in tqdm(range(1, int(num_batches), args.cache)):
-        if args.cheat:
-            async_result = pool.apply_async(dataset.get_training_item, (index, args.cache))
-        else:
-            async_result = pool.apply_async(dataset.get_eval_item, (index, args.cache))
+        async_result = pool.apply_async(dataset.get_eval_item, (index, args.cache))
         for batch in cur_cache:
+            output = run_model(model, batch, False, args.train_qa, True, args.span)
+            
+            loss = output[0].sum().cpu().data
+            loss_total += loss
 
+            for i in range(dataset.args.batch):
+                n_support = batch.hpqa_batch[i].ss_count
+                ss = output[1][i]
+                pred_ss = ((ss > 0.3).nonzero().cpu().detach().numpy()).flatten()
 
-            if args.span:
-                output = run_model(model, batch, False, 
-                args.PG, args.train_qa, tfr_override=0.0, span=args.span)
-                
-                loss = output[0].sum().cpu().data
+                #pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
+                gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
 
-                loss_total += loss
-                for i in range(dataset.args.batch):
-                    n_support = batch.hpqa_batch[i].ss_count
-                    pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
-                    gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
+                text = find_span(batch.data_word_ex[i], 
+                output[2][i], output[3][i], output[4][i], 
+                batch.hpqa_batch[i].sent_count_no_q * batch.max_sent_len,
+                batch.hpqa_batch[i], dataset.args, mask=batch.data_mask_no_q[i])
 
-                    text = find_span(batch.data_word_ex[i], 
-                    output[2][i], output[3][i], output[4][i], 
-                    batch.hpqa_batch[i].sent_count_no_q * batch.max_sent_len,
-                    batch.hpqa_batch[i], dataset.args, mask=batch.data_mask_no_q[i])
+                pred_ans.append(text)
+                pred_top_k.append(pred_ss)
 
-                    pred_ans.append(text)
-                    pred_top_k.append(pred_ss)
+                gold_ans.append(batch.gold[i])
+                gold_top_k.append(gold_ss)
 
-                    gold_ans.append(batch.gold[i])
-                    gold_top_k.append(gold_ss)
-
-                continue
-            num_supporting_sents = int(batch.sent_sim.sum(1).item())
-            #if args.hard_ss:
-            #    max_sample_size = args.sample_size
-            model.change_sample_size(num_supporting_sents)
-            returned_beam = b.beam_search([batch], model, args, False, run_model, False, beam_size=4)
-            pred_ans.append(summary_map([returned_beam.tokens[1:len(returned_beam.tokens)]], batch, True))
-            gold_ans.append(gold_map(batch))
-            batch.sent_sim[0].sum()
         backup = cur_cache
         try:
             cur_cache = async_result.get()
@@ -381,53 +344,3 @@ def validate_qa(dataset, run_model, model=None, pool=None, args=None, samples = 
 
 
     return accuracy, loss_total, N
-
-def test(dataset, run_model, model, args=None):
-    
-    #For when we run out of VRAM
-    batch_size_old = dataset.args.batch
-    dataset.args.batch = 1 
-    is_coverage = (args.lambda_coeff > 0)
-
-    model.eval()
-    b = BeamSearch()
-
-    if args.cheat:
-        batch = dataset.get_training_item(index=args.test_indx, delta=1)
-    else:
-        batch = dataset.get_eval_item(index=args.test_indx, delta=1)
-    if args.train_qa:
-        num_supporting_sents = int(batch[0].sent_sim.sum(1).item())
-    
-    #if args.hard_ss:
-    #    max_sample_size = args.sample_size
-    if args.train_qa:
-        model.change_sample_size(num_supporting_sents)
-
-    returned_beam = b.beam_search(batch, model, args, is_coverage, run_model, False, beam_size=4)
-    #_, summary, _ = run_model(None, model, batch[0], True, 0, args.PG, train_gqa)
-
-    print("Original Summary")
-    print(batch[0].gold[0])
-    print("Generated Summary")
-    indx = 0
-
-    #Clip at the first EOS
-    try:
-        indx = returned_beam.tokens.index(EOS)
-    except:
-        indx = len(returned_beam.tokens)
-    try:
-        if args.train_qa:
-            print(gqa_local_num2text(returned_beam.tokens[1:indx], None, batch[0].oov[0], test=True))
-        else:
-            print(local_num2text(returned_beam.tokens[1:indx], None, batch[0].oov[0], test=True))
-    except:
-        print("Error! Word outside of OOV.")
-        print(returned_beam.tokens[1:indx])
-        print(batch[0].oov[0])
-
-    if not args.train_qa:
-        model.change_sample_size(args.sample_size)
-
-    dataset.args.batch = batch_size_old
