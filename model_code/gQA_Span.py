@@ -8,7 +8,6 @@ import torch.nn.functional as F
 
 from model_code.gnn import *
 from model_code.gnn_bridge import GNN_Bridge
-from model_code.loss_functions import *
 from model_code.data_hotpotqa import *
 from model_code.attention import BiAttention, MultiHeadAttention
 
