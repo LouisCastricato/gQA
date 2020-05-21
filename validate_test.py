@@ -335,7 +335,6 @@ def validate_qa(dataset, run_model, model=None, pool=None, args=None, samples = 
     print("Average per example loss")
     print(loss_total/float(N))
 
-    model.change_sample_size(args.sample_size)
     dataset.args.batch = batch_size_old
 
 
