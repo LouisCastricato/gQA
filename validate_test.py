@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 from model_code.data_hotpotqa import local_num2text as gqa_local_num2text
+from model_code.data_hotpotqa import *
 from torch.optim import RMSprop
 import numpy as np
 import random
