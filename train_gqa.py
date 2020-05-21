@@ -230,7 +230,7 @@ def execute(dataset):
         #Validation
         print("Computing validation accuracy... Please wait.")
         val_em, val_loss, N = \
-            validate_qa(dataset, run_model, model, pool, args, samples=14)
+            validate_qa(dataset, run_model, model, pool, args, samples=1)
 
         val_arr.append(val_em)
         #scheduler.step(val_em)
