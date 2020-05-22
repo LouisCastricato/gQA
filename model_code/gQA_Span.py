@@ -22,9 +22,6 @@ def _aggregate_avg_pooling(input, text_mask):
     '''
     # zero out padded tokens
     batch_size, max_text_len, _ = input.size()
-    #print(text_mask.size())
-    # idxes = torch.arange(0, int(torch.max(text_len)), out=torch.LongTensor(torch.max(text_len))).unsqueeze(0).cuda()
-    # text_mask = Variable((idxes < text_len.unsqueeze(1)).unsqueeze(2).float())
     input = input * text_mask.detach().unsqueeze(2).float()
 
     out = torch.sum(input, dim=1)
@@ -33,6 +30,7 @@ def _aggregate_avg_pooling(input, text_mask):
     text_len = text_len + text_len.eq(0).float()
     out = out.div(text_len)
     return out
+
 class gQA_Span(nn.Module):
     def __init__(self, word_vocab_size, char_vocab_size, args, pretrained_emb=None, n_mult=None, d_mult=None):
         super(gQA_Span, self).__init__()
@@ -60,7 +58,6 @@ class gQA_Span(nn.Module):
 
         #Decoding
         self.decoder_lstm = Word_RNN(self.hidden_size, self.hidden_size, cell_type="LSTM", pool=args.pool)
-        #self.sp_gcn = GNN_Bridge(args, n_mult, d_mult, sample_size, steps=8)
         self.answer_lstm = Word_RNN(self.hidden_size * 2, self.hidden_size * 2, cell_type="LSTM", pool=args.pool)
         self.answer_end_lstm = Word_RNN(self.hidden_size * 2, self.hidden_size * 2, cell_type="LSTM", pool=args.pool)
 
@@ -228,17 +225,7 @@ class gQA_Span(nn.Module):
 
         #CLASSIFIER
 
-        #Predict supporting sentences. This is where the document summary is introduced
-        #gcn_input = State(outputs=[h_word, h_sent.view(batch_size, docu_len, -1)], mask=data_mask,
-        #other=[adj, all_to_all, length_s, dev, None, [batch_size, docu_len, sent_len]])
-        #bridge_output = self.sp_gcn(gcn_input, h_question_sent, sent_sim=None, span=True, return_attn=True)
-        #sp_gcn_output = bridge_output[1][-1]
-
         h_sent = h_sent.view(h_gcn_output.size())
-        #sp_gcn_output = sp_gcn_output.view(h_gcn_output.size())
-        #h_question_sent_sp = h_question_sent.unsqueeze(1).expand(batch_size, docu_len, self.hidden_size).contigous()
-        #h_question_sent_sp = h_question_sent_sp.view(h_sent.size())
-
 
         sp_output = self.sp_linear(torch.cat([h_sent, h_gcn_output], dim=-1))
         sp_logits = self.sp_classifier(F.relu(self.drop(sp_output)))
@@ -252,11 +239,9 @@ class gQA_Span(nn.Module):
         sp_output = sp_output.view(-1, self.hidden_size).unsqueeze(-2).expand(h_word.size()).contiguous()
         h_word = torch.cat([h_word, sp_output], dim=-1)
 
-
         if gSUM_Span:
             #word embedding, sentence embedding, document embedding, supporting sentence embedding
             return h_word, h_sent, h_gcn, h_question_sent_sp
-
 
         #ANSWER START/END
         h_word_start, h_start = self.answer_lstm(h_word, length_s, data_mask, h_sent.view(-1, h_sent.size(-1)), device=dev)

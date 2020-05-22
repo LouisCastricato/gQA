@@ -18,9 +18,7 @@ class Sentence_Selector(nn.Module):
         '''
         # zero out padded tokens
         batch_size, max_text_len, _ = input.size()
-        #print(text_mask.size())
-        # idxes = torch.arange(0, int(torch.max(text_len)), out=torch.LongTensor(torch.max(text_len))).unsqueeze(0).cuda()
-        # text_mask = Variable((idxes < text_len.unsqueeze(1)).unsqueeze(2).float())
+
         input = input * text_mask.detach().unsqueeze(2).float()
 
         out = torch.sum(input, dim=1)
@@ -61,8 +59,6 @@ class Sentence_Selector(nn.Module):
         '''
         if self.args.postgcn_attn:
             neighbours = self.attn_linear_seq(gcn_raw[-1].view(-1, self.hidden_size))
-            #print(neighbours.size())
-            #print(base.size())
             output = base + neighbours
         else:
             output = base
