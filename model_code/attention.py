@@ -62,11 +62,7 @@ class SingleLayerAttention(nn.Module):
         mb_size, len_k, d_k = k.size()
         q = q.unsqueeze(2).expand(-1, -1, len_k, -1) 
         k = k.unsqueeze(1).expand(-1, len_q, -1, -1)
-        # x = torch.cat([q, k], dim=3)
         x = q - k
-
-        # x = self.act(self.linear(x))
-        # attn = torch.matmul(x, self.weight).squeeze(3)
 
         attn = self.act(torch.matmul(x, self.weight).squeeze(3))
 
@@ -75,12 +71,6 @@ class SingleLayerAttention(nn.Module):
             attn_mask = attn_mask.eq(0).data
             attn.data.masked_fill_(attn_mask, -float('inf'))
 
-        # attn_mask = attn_mask.float()
-        # attn = torch.exp(attn) * attn_mask
-        # attn_sum = attn.sum(dim=2)
-        # # print(attn_sum)
-        # attn_sum = attn_sum + attn_sum.eq(0).float()
-        # attn = attn / attn_sum.unsqueeze(2).expand_as(attn)
         attn = self.softmax(attn)
         attn.data.masked_fill_(attn_mask, 0)
         attn = self.dropout(attn)
@@ -109,8 +99,6 @@ class MultiHeadAttention(nn.Module):
         self.w_vs = nn.Parameter(torch.FloatTensor(n_head, d_input_v, d_v))
 
         self.attention = DotProductAttention(d_model)
-        # self.attention = SingleLayerAttention(d_model, d_k)
-        # self.layer_norm = LayerNormalization(d_model)
         self.proj = Linear(n_head*d_v, d_model)
 
         self.dropout = nn.Dropout(dropout)
@@ -181,7 +169,6 @@ class PositionAwareAttention(nn.Module):
 
         relative_pos = self.act(self.pos_proj(pos1 - pos2))
 
-        # z = torch.cat([x1, x2, relative_pos], dim=3)
         z = relative_pos
         attn = torch.matmul(z, self.weight).squeeze(3)
 

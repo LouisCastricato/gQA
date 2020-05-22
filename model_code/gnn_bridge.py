@@ -13,8 +13,10 @@ import sys
 sys.path.append("..")
 from utils.state import State
 from utils.GGNN import GGNN
+
 def isnan(x):
     return x != x
+
 #Acts as a bridge between the encoder and decoder
 class GNN_Bridge(nn.Module):
     def __init__(self, args, n_mult = None, d_mult = None, over_gdim=None, steps=8):
@@ -70,7 +72,6 @@ class GNN_Bridge(nn.Module):
         h_word = h_word.view(batch_size, docu_len, sent_len, -1)
 
         h_gcn = None
-        #h_sent = h_sent.view(batch_size, docu_len, -1)
         data_mask = data_mask.view(batch_size, docu_len, sent_len)
         h_gcn = h_sent
         gcn_layers = []

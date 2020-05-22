@@ -9,7 +9,7 @@ import time
 import sys
 from model_code.ModelUtils import RNN, CRF
 from model_code.attention import MultiHeadAttention, PositionAwareAttention
-#Required by BERT
+
 MAX_SENTENCE_LEN = 20
 
 sys.path.append("..")
@@ -237,9 +237,6 @@ class AttnSent(nn.Module):
         self.gcn_reduce = nn.Linear(self.max_length * hidden_size, self.max_length * hidden_size)
         self.attn = nn.Linear(self.max_length * hidden_size, self.max_length_out)
         
-        #PG.init_linear_wt(self.attn)
-        #PG.init_linear_wt(self.attn_combine)
-        
         self.softmax = nn.Softmax(dim=0)
         self.dropout = nn.Dropout(self.dropout_p)
         self.time = int(round(time.time() * 1000))
@@ -267,6 +264,7 @@ class AttnSent(nn.Module):
         self.time = int(round(time.time() * 1000)) 
     def initHidden(self, device, sentences, batches = 1):
         return torch.zeros(batches, sentences, self.hidden_size, device=device)
+
 #Everything south of here was pulled from graphIE
 class GlobalNode(nn.Module):
 
@@ -388,9 +386,6 @@ class GNN(nn.Module):
         else:
             self.decoder_lstm = None
 
-        # if self.model == 'concat':
-        #     self.concat_transform = nn.Linear(args.d_graph[0]*4, args.d_graph[0])
-        #     d_in = args.d_graph[0]
         d_in = args.d_graph[0]
 
         if self.model in ['lstm-gcn-lstm', 'lstm-rgcn-lstm']:
@@ -399,18 +394,14 @@ class GNN(nn.Module):
             d_in += self.d_pos_embed
         else:
             self.pos_linear = None
-        # if self.model == 'gnnattn':
-        #     d_in = args.d_graph[0]
-        
+
         for d_out in args.d_graph:
-            # self.lstm_layer.append(Word_LSTM(d_in, d_out))
             if args.model == 'lstm-rgcn-lstm':
                 self.gnn_layer.append(GNN_Layer(d_in, d_out, args.globalnode, n_graph=4))
             if args.model == 'lstm-gcn-lstm':
                 self.gnn_layer.append(GNN_Layer(d_in, d_out, args.globalnode, n_graph=1))
             if args.model == 'lstm-gat-lstm':
                 self.gnn_layer.append(GNN_Pos_Att_Layer(d_in, d_out))  # NOT SUPPORTED
-                # self.gnn_layer.append(GNN_Att_Layer(n_head=4, d_input=d_in, d_model=d_out, globalnode=args.globalnode))
             d_in = d_out
 
         self.out_linear1 = nn.Linear(d_in, d_in)
@@ -419,7 +410,6 @@ class GNN(nn.Module):
         self.globalnode = args.globalnode
         
         self.drop = nn.Dropout(p=args.dropout)
-        # self.log_softmax = nn.LogSoftmax(dim=2)
 
         self.crf = args.crf
         if self.crf:
@@ -429,14 +419,11 @@ class GNN(nn.Module):
 
     def clear_time(self):
         self.cnn_time, self.lstm_time, self.gcn_time = 0, 0, 0
-        # for layer in self.lstm_layer:
-        #     layer.lstm.lstm_time = 0
 
     def print_time(self):
         print('cnn %f  lstm %f  gcn %f'%(self.cnn_time, self.lstm_time, self.gcn_time))
 
     def forward(self, data, data_word, pos, length, mask, adjs):
-        # h = self.clstm(words, length)
         batch_size, docu_len, sent_len, word_len = data.size()
 
         if self.model == 'lstm-gcn-lstm':
@@ -475,52 +462,18 @@ class GNN(nn.Module):
 
         if h_gcn is not None:
             h_gcn = h_gcn.view(batch_size * docu_len, -1)
-        
-        # if self.model == 'gnnattn': 
-        #     h_gcn = h_lstm
-        #     for i in range(self.num_layers):
-        #         h_gcn = self.gnn_layer[i](h_gcn, pos, adjs.sum(dim=1))            
-        #     h_gcn = h_gcn.view(batch_size * docu_len, -1)
 
         self.gcn_time += time.time()-start
-      
-        # if self.model == 'lstm+g':
-        #     # h_lstm = h_lstm.view(batch_size, docu_len, -1)
-        #     h_gcn = graph_masked_mean(h_lstm, adjs[0])
-        #     h_gcn = h_gcn.view(batch_size * docu_len, -1)
-
-        # if self.model == 'concat':
-        #     # neighbor_mask:  batch_size * 4 * docu_len * docu_len
-        #     # h_lstm = h_lstm.view(batch_size, docu_len, -1)
-        #     h_lstm = h_lstm.unsqueeze(1).expand(-1, 4, -1, -1).contiguous().view(batch_size*4, docu_len, -1)
-        #     neighbor_mask = neighbor_mask.float().view(batch_size*4, docu_len, docu_len)
-        #     h_gcn = torch.bmm(neighbor_mask, h_lstm).view(batch_size, 4, docu_len, -1)
-        #     h_gcn = h_gcn.transpose(1,2).contiguous().view(batch_size, docu_len, -1)
-        #     h_gcn = F.tanh(self.concat_tra nsform(h_gcn))
-        #     h_gcn = h_gcn.view(batch_size * docu_len, -1)
 
         start = time.time()
         if self.decoder_lstm is not None:
             h_word, h_lstm = self.decoder_lstm(h_word, length, mask, h_gcn)
-        # elif self.final == 'linear' or self.final == 'attn':
-        #     h_gcn = h_gcn.unsqueeze(1).expand(-1, sent_len, -1)
-        #     hg = torch.cat([h, h_gcn], dim=2)
-        #     if self.final == 'linear': 
-        #         h = self.final_layer(hg)
-        #     else:
-        #         attn_mask = mask.unsqueeze(2).expand(-1, -1, sent_len)
-        #         h, _ = self.final_layer(hg, hg, hg, attn_mask)
-        #     h = F.relu(h)
+
         self.lstm_time += time.time()-start
 
         h = self.drop(h_word)
         h = self.out_linear1(h)
         h = F.relu(h)
         h = self.out_linear2(h)
-        
-        # output = self.log_softmax(h)
-        
-        # if self.globalnode:
-        #     g = F.log_softmax(self.linear_global(h_g), dim=1)
-        #     return output, g
+
         return h

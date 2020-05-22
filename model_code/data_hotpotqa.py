@@ -19,21 +19,12 @@ from torch import nn
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 
-
-#Convert data to states
 import sys
 sys.path.append("..")
 from utils.state import State
 from utils.config import *
 
 nlp = spacy.blank('en')
-
-'''
-final experiment
-change to spacy tokenization (preprocess more)
-change adjm from cos sim to
-every sent connect to next sent, last sent in doc connect to first sent in doc
-'''
 
 count_vectorizer = CountVectorizer(stop_words='english')
 count_vectorizer = CountVectorizer()
@@ -72,7 +63,6 @@ def load_word_vocab(vocab_file):
     for w in words:
         word2id[w.lower()] = i
         i += 1
-        #id2word.append(w.lower())
         if i == WORD_VOCAB_SIZE:
             break
     cnt = 0
@@ -82,7 +72,7 @@ def load_word_vocab(vocab_file):
         embedding[_id] = vocab[w]
     global id2word
     id2word = {v: k for k, v in word2id.items()}
-    print("%d words don't have pretrained embedding" % cnt)
+    print(f"{cnt} words don't have pretrained embedding")
 
 
 def get_word_id(w):
@@ -98,7 +88,7 @@ def repeat(f, n):
     return rfun
 
 def normalize_adj(adj):
-    """Symmetrically normalize adjacency matrix."""
+    # Symmetrically normalize adjacency matrix
     adj = sp.coo_matrix(adj)
     rowsum = np.maximum(np.array(adj.sum(1)), 1)
     d_inv_sqrt = np.power(rowsum, -0.5).flatten()
@@ -172,28 +162,6 @@ class hpqa_short_hand():
         self.id = id
 
 
-'''
-need attention forcing -> add code -> read overleaf -> positive attention forcing with supporting sentences, overleaf describes negative attention forcing
-word_data incorrect (trailing values should be pad)
-char_mask good
-char_data good -> get rid of 
-answer_word_extended  (should have same value, if it has oov, has oov from original data)
-    sos answer eos pad pad ... 15
-answer_mask incorrect (just look at it)
-answer_mask: (1 for all non pad terms)
-answer_mask_unk: (1 if word in oov)
-
-
-the thing with gQA, attention forcing
-if gSUM gets accepted, we have gQA, they are helping each other.
-'''
-
-'''
-answer_word_extended  (should have same value, if it has oov, has oov from original data)
-    sos answer eos pad pad ... 15
-
-change answer to gold
-'''
 class HotPotQA():
     #Articles to be given as a disjoint set of sentences
     def compute_span(self, articles, gold):
@@ -208,8 +176,6 @@ class HotPotQA():
                     if word == gold[index]:
                         if index == 0:
                             start = [i,j]
-                        
-                        #Are we at the end of the phrase
                         index += 1
                         if index >= len(gold):
                             end = [i,j]
@@ -226,9 +192,9 @@ class HotPotQA():
 
         self.name = str(obj['id']) + ".json"
 
-        self.gold = obj['answer'] # now tokenized and lower()'ed at preproc step
+        self.gold = obj['answer']
 
-        self.question = obj['question'] # now tokenized and lower()'ed at preproc step
+        self.question = obj['question']
 
         self.articles = obj['article_sentences']
 
@@ -322,12 +288,6 @@ class HotPotQA():
         #We can use the question in the answer itself
         if not args.span:
             self.supporting_sentences.append(1)
-
-        # gqa mark3, create adjm on the fly
-
-        # with open(adjm_dir + str(self.id) + ".adjm", 'r') as open_file:
-        #     sub_adjm = json.loads(open_file.read())
-        # sub_adjm = torch.FloatTensor(sub_adjm)
 
         # number of sentences total in this data point
         self.sent_count = len(self.sentences_flat)
@@ -438,7 +398,7 @@ class HotPotQA():
         ### construct adjacency matrix
         #########################
 
-        article_adjms = list() # what do you think this is lol
+        article_adjms = list()
         total_len = 0
 
         for article_idx, article in enumerate(self.articles):
@@ -466,23 +426,13 @@ class HotPotQA():
         doc_adjm[-1] = 1 # question augment properly
         doc_adjm[:,-1] = 1
 
-
         self.adjm = doc_adjm 
         
         #########################
         ### construct data points for answer
         #########################
 
-
-        '''
-        print(self.gold)
-        if span not in ["Not Span", "Not Found"]:
-            start, end = span
-            print(self.sentence_tokens_flat_no_q[start[0]][start[1]:end[1]])
-        print(span)
-        '''
-
-        gold_word = np.zeros(len(self.gold) + 2, dtype = int) # literally answer word encodings
+        gold_word = np.zeros(len(self.gold) + 2, dtype = int) # answer word encodings
         gold_word_extended = np.zeros(len(self.gold)  + 2, dtype = int) # above, with oov's
         gold_word_mask = np.full(len(self.gold) + 2, 1, dtype = int) # mask for non-oov words
         gold_word_mask_unk = np.full(len(self.gold) + 2, 0, dtype = int) # mask for oov words
@@ -500,15 +450,8 @@ class HotPotQA():
         #########################
         ### construct data points for similarity score
         #########################
-        # sent_sim = np.zeros(self.max_sent_len, dtype = float)
-        ##### experiment 2019/09/11
-        # sentence_cat_questions = [s.lower() + " " + ' '.join(self.question) for s in self.sentences_flat]
-        # sentence_cat_question_vectors = count_vectorizer.fit_transform(sentence_cat_questions)
-        # sentence_vectors = count_vectorizer.transform(self.sentences_flat)
-        # self.all_to_all = cosine_similarity(sentence_cat_question_vectors, sentence_vectors)
-        ##### experiment is to use rotated diagonal, with end of doc -> begin of doc
 
-        article_adjms = list() # what do you think this is lol
+        article_adjms = list()
         total_len = 0
 
         for article_idx, article in enumerate(self.articles):
@@ -538,11 +481,6 @@ class HotPotQA():
 
         self.total_len = total_len
 
-
-
-        # print(f"article_vectors: {article_vectors}")
-        # print(f"question_vectors: {question_vectors}")
-
         ### list of sentence lengths
         self.length_s = np.array(list(map(lambda sentence: min(args.max_sentence_len, sentence), data_word_mask.sum(axis=1))))
         self.max_sent_len = max(self.length_s)
@@ -569,8 +507,6 @@ class HotPotQA():
         self.sent_sim = torch.from_numpy(self.sent_sim)
         self.sent_attn_mask = torch.full(self.sent_sim.size(), 1)
 
-        # sent_attn_mask_pos = list(map(lambda x: 1 if x > (1. - s_mask) else 0, sent_sim))
-
         self.gold_word = torch.from_numpy(gold_word)
         self.gold_word_extended = torch.from_numpy(gold_word_extended)
         self.gold_mask = torch.from_numpy(gold_word_mask)
@@ -581,9 +517,6 @@ class HotPotQA():
         self.data_word_mask = torch.from_numpy(data_word_mask)
         self.data_word_mask_no_q = torch.from_numpy(data_word_mask_no_q)
         self.data_word_extended = torch.from_numpy(data_word_extended)
-
-        # self.all_to_all = np.full((self.sent_count, self.sent_count), 1., dtype=float) - np.eye(self.sent_count)
-        # self.all_to_all = torch.from_numpy(self.all_to_all)
 
 class Batch:
     def __init__(self, hpqa_batch, _id):
@@ -740,15 +673,7 @@ class Batch:
         self.gold = list(map(lambda topic: topic.gold, self.hpqa_batch))
         self.name = list(map(lambda topic: topic.name, self.hpqa_batch))
         self.word_embd = None
-    '''
-    def __del__(self):
-        del self.sent_attn_mask
-        del self.sent_sim
-        del self.all_to_all
-        del self.adjm
-        del self.data_mask
-        del self.data_mask_no_q
-    '''
+
     def embed(self, embeddings):
         batch_size, docu_len, sent_len = self.data_word.size()
         self.word_embd = embeddings(self.data_word.view(batch_size*docu_len, -1))
@@ -775,7 +700,6 @@ class DataSet():
 
         self.order = None
 
-    # tested + works
     def split_train_valid_test(self, ratio):
         n = len(self.hpqa_files)
         if not self.order:
@@ -836,7 +760,7 @@ def read_hotpotqa_data(vocab_file, json_file, args):
     return DataSet(json_file, args)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='PyTorch')
+    parser = argparse.ArgumentParser(description='Testing the data module')
     parser.add_argument('--batch', type=int, default=4, help='mini-batch size')
     parser.add_argument('--data_path', type=str, default=None, help='data path')
     parser.add_argument('--max_sentence_len', default=32, type=int, help = 'Maximum gold length to generate')
