@@ -12,8 +12,6 @@ class TimeOutException(Exception):
 def alarm_handler(signum, frame):
     raise TimeOutException()
 
-
-
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -76,7 +74,6 @@ def execute(dataset):
     if args.load:
         optimizer.load_state_dict(obj['optimizer'])
         start_pos = max(int(obj['start']),  0)
-        #print(start_pos)
 
     #We want the scheduler to decrease every other cycle
     num_batches = args.file_limit/args.batch
@@ -164,7 +161,6 @@ def execute(dataset):
 
                 #Accumulate loss
                 itt_loss += loss.sum().data
-                #print(itt_loss)
                 loss.sum().backward()
 
                 if epoch == 0:
@@ -187,7 +183,6 @@ def execute(dataset):
 
                 if type(model.answer_type_gcn.gnn_layer[-1]) is GGNN: 
                     clip_grad_norm_(model.gnn_bridge.gnn_layer[-1].propagator.parameters(), 10.)
-                    #clip_grad_norm_(model.sp_gcn.gnn_layer[-1].propagator.parameters(), 10.)
                     clip_grad_norm_(model.answer_type_gcn.gnn_layer[-1].propagator.parameters(), 10.)
 
 
@@ -220,10 +215,7 @@ def execute(dataset):
         print(total_loss)
         print("Iteration Loss Was: ")
         print(itt_loss)
-        '''
-        print("Current Test Output: ")
-        test_qa(dataset, run_model, model, pool, args, samples=64)
-        '''
+
         #Save most recent edition, do not check if it is the best
         save(model, optimizer, epoch, None, scheduler=scheduler, warmup=warmup_scheduler)
         
@@ -233,7 +225,6 @@ def execute(dataset):
             validate_qa(dataset, run_model, model, pool, args, samples=1)
 
         val_arr.append(val_em)
-        #scheduler.step(val_em)
 
         if args.save:
             save(model, optimizer, epoch, val_loss, scheduler=scheduler, warmup=warmup_scheduler)

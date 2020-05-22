@@ -187,8 +187,6 @@ def test_qa(dataset, run_model, model=None, pool=None, args=None, samples=None):
                 n_support = batch.hpqa_batch[i].ss_count
                 ss = output[1][i]
                 pred_ss = ((ss > 0.3).nonzero().cpu().detach().numpy()).flatten()
-
-                #pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
                 gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
 
                 text = find_span(batch.data_word_ex[i], 
@@ -282,7 +280,6 @@ def validate_qa(dataset, run_model, model=None, pool=None, args=None, samples = 
                 ss = output[1][i]
                 pred_ss = ((ss > 0.3).nonzero().cpu().detach().numpy()).flatten()
 
-                #pred_ss = torch.topk(output[1][i], k=n_support, dim=-1)[1].cpu().detach().numpy()
                 gold_ss = torch.topk(batch.hpqa_batch[i].sent_sim, k=n_support, dim=-1)[1].cpu().detach().numpy()
 
                 text = find_span(batch.data_word_ex[i], 
