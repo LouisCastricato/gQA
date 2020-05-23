@@ -52,6 +52,7 @@ parser.add_argument('--TPU', action='store_true', default=False, help = 'Are we 
 parser.add_argument('--span', action='store_true', default=False, help = 'Compute spans instead of using an LSTM.')
 parser.add_argument('--finetune_embd', action='store_true', default=False, help = 'Finetunes the GloVe embeddings')
 parser.add_argument('--sp_lambda', type=float, default=5.0, help='Coefficient to bias sp loss by.')
+parser.add_argument('--adj_lambda', type=float, default=0.5, help='Coefficient to bias adjm by.')
 
 parser.add_argument('--max_sentence_len', default=20, type=int, help = 'Maximum gold length to generate')
 parser.add_argument('--max_word_len', default=24, type=int, help = 'Maximum gold length to generate')
