@@ -133,7 +133,7 @@ def local_num2text(inp, length, oov, test=False):
     else:
         return to_return[0:int(length)]
 
-def read_hpqa_files(path, files, args):
+def read_hpqa_files(path, files, args, validate=False):
     count = 0
     batch_count = 0
     batch_id = 0
@@ -144,7 +144,7 @@ def read_hpqa_files(path, files, args):
         file = hpqa.name
         with open(os.path.join(path, file)) as json_file:
             data = json.load(json_file)
-            cur_batch.append(HotPotQA(data, args, True))
+            cur_batch.append(HotPotQA(data, args, True, validate))
         count += 1
         batch_count += 1
         if batch_count >= args.batch:
@@ -185,7 +185,7 @@ class HotPotQA():
 
         return "Not Found"
 
-    def __init__(self, obj, args=None, pointer_generation=False):
+    def __init__(self, obj, args=None, pointer_generation=False, validate=False):
         self.args=args
 
         self.id = obj['id']
@@ -497,7 +497,10 @@ class HotPotQA():
         del documents_count
 
 
-        self.adjm += 0.5 * (sent_sim - np.eye(sent_sim.shape[0]))
+        if args.test or validate:
+            self.adjm += 0.05 * (sent_sim - np.eye(sent_sim.shape[0]))
+        else:
+            self.adjm += args.adj_lambda * (sent_sim - np.eye(sent_sim.shape[0]))
 
         #Make matrix symmetric
         self.adjm = (0.5) * (torch.t(self.adjm) + self.adjm)
@@ -752,7 +755,7 @@ class DataSet():
     def get_eval_item(self, index, delta = 1):
         to_process = read_hpqa_files(self.hpqa_file, 
         self.valid[self.args.batch * index: self.args.batch * (index + delta)],
-        self.args)
+        self.args, True)
         return to_process
 
 def read_hotpotqa_data(vocab_file, json_file, args):
