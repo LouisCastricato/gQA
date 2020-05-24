@@ -2,7 +2,7 @@
 
 (Nickname: Gary)
 
-Preprint: Coming in a few days!
+[Preprint](https://github.com/LouisCastricato/gQA/blob/master/main.pdf)
 
 [Colab Notebook](https://github.com/LouisCastricato/gQA/blob/master/gQA.ipynb)
 
