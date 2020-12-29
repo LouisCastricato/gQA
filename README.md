@@ -2,8 +2,6 @@
 
 (Nickname: Gary)
 
-[Preprint](https://github.com/LouisCastricato/gQA/blob/master/main.pdf)
-
 [Colab Notebook](https://github.com/LouisCastricato/gQA/blob/master/gQA.ipynb)
 
 A naive implementation of GGNNs for HotPotQA, performing comparably to SOTA with no hyper parameterization and at a fraction of the size.
