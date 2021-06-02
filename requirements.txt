@@ -75,7 +75,7 @@ torchtext==0.6.0
 tornado==6.0.4
 tqdm==4.46.0
 traitlets==4.3.3
-urllib3==1.25.9
+urllib3==1.26.5
 warmup-scheduler @ git+https://github.com/ildoonet/pytorch-gradual-warmup-lr.git@6b5e8953a80aef5b324104dc0c2e9b8c34d622bd
 wasabi==0.6.0
 wcwidth==0.1.9
